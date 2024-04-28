@@ -1,165 +1,144 @@
 import { useEffect } from 'react';
 
 import * as THREE from 'three'
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-// import * as dat from 'lil-gui'
 import { AmbientLight, DirectionalLight } from 'three'
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { GLTFLoader } from 'three/examples/jsm/Addons.js';
+
+import { MeshSurfaceSampler } from 'three/examples/jsm/Addons.js';
+
+import monkeySrc from '/3d-models/monkey-head/scene.gltf?url'
 
 import fragment from '../shaders/fragment.glsl'
 import vertex from '../shaders/vertex.glsl'
 
+const colors = [
+    new THREE.Color('purple'),
+    new THREE.Color('mediumpurple'),
+    new THREE.Color('plum'),
+]
+
+const uniforms = {
+    uTime: { value: 0 },
+}
+
+const createParticel = (sampler) => {
+    const geometry = new THREE.BufferGeometry()
+    const num = 25_000
+
+    const positionArray = new Float32Array(num * 3)
+    const colorArray = new Float32Array(num * 3)
+    const offsetArray = new Float32Array(num )
+
+    const pos = new THREE.Vector3()
+
+    for (let i = 0; i < num; i++) {
+        // position
+        sampler.sample(pos)
+        const { x, y, z } = pos
+        positionArray.set([x, y, z], i * 3)
+        // color
+        const color = colors[Math.floor(Math.random() * colors.length)]
+        const [ r, g, b ] = color
+        colorArray.set([r, g, b], i * 3)
+        // random for shaders
+        offsetArray[i] = Math.random()
+    }
+
+    // attribute used by the shader
+    geometry.setAttribute('position', new THREE.BufferAttribute(positionArray, 3))
+    geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3))
+    geometry.setAttribute('offset', new THREE.BufferAttribute(offsetArray, 1))
+
+    const material = new THREE.ShaderMaterial({
+        uniforms, // pass the uniforms to the shader (time)
+        fragmentShader: fragment,
+        vertexShader: vertex,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+    })
+
+    const particels = new THREE.Points(geometry, material)
+    return particels
+}
+
 export const useParticel = () => {
+    const scene = new THREE.Scene();
 
     useEffect(() => {
-        
-        /**
-         * Debug
-         */
-        // const gui = new dat.GUI()
-        
-        /**
-         * Scene
-         */
-        const scene = new THREE.Scene()
-        // scene.background = new THREE.Color(0xdedede)
-        
-        /**
-         * BOX
-         */
-        // const material = new THREE.MeshNormalMaterial()
-        // const material = new THREE.MeshStandardMaterial({ color: 'coral' })
-        // const geometry = new THREE.BoxGeometry(1, 1, 1)
-        
-        /**
-         * Plane
-         */
-        // const groundMaterial = new THREE.MeshStandardMaterial({ color: 'lightgray' })
-        // const groundGeometry = new THREE.PlaneGeometry(10, 10)
-        // groundGeometry.rotateX(-Math.PI * 0.5)
-        // const ground = new THREE.Mesh(groundGeometry, groundMaterial)
-        // scene.add(ground)
-        
-        // const mesh = new THREE.Mesh(geometry, material)
-        // mesh.position.y += 0.5
-        // scene.add(mesh)
-        
-        const geometry = new THREE.BufferGeometry()
-        const num = 500
-        const bound = 20
+        /** Scene */
+        const loader = new GLTFLoader()
 
-        const positionArray = new Float32Array(num * 3)
-        const colorArray = new Float32Array(num * 3)
-        for (let i = 0; i < num; i++) {
-            const x = Math.random() * bound - bound / 2
-            const y = Math.random() * bound - bound / 2
-            const z = Math.random() * bound - bound / 2
+        loader.load(monkeySrc, (gltf) => {
+            // scene.add(gltf.scene)
 
-            positionArray.set([x, y, z], i * 3)
-            
-            const r = Math.random()
-            const g = Math.random()
-            const b = Math.random()
+            let model;
+            gltf.scene.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    model = child
+                }
+            })
 
-            colorArray.set([r, g, b], i * 3)
-        }
+            model.geometry.scale(3, 3, 3)
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positionArray, 3))
-        geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3))
-        
-        const material = new THREE.ShaderMaterial({
-            fragmentShader: fragment,
-            vertexShader: vertex,
-            transparent: true
+            const sampler = new MeshSurfaceSampler(model).build()
+
+            const particels = createParticel(sampler)
+            scene.add(particels)
         })
 
-        const particels = new THREE.Points(geometry, material)
-        scene.add(particels)
-
-        /**
-         * render sizes
-         */
+        /** render sizes */
         const sizes = {
             width: window.innerWidth,
             height: window.innerHeight,
         }
-        /**
-         * Camera
-         */
+        /** Camera */
         const fov = 60
         const camera = new THREE.PerspectiveCamera(fov, sizes.width / sizes.height, 0.1)
         camera.position.set(4, 4, 4)
         camera.lookAt(new THREE.Vector3(0, 2.5, 0))
-        
-        /**
-         * Show the axes of coordinates system
-         */
-        const axesHelper = new THREE.AxesHelper(3)
-        scene.add(axesHelper)
-        
-        /**
-         * renderer
-         */
+
+        /** renderer */
         const renderer = new THREE.WebGLRenderer({
             antialias: window.devicePixelRatio < 2,
             logarithmicDepthBuffer: true,
             canvas: document.querySelector('canvas.webgl'),
         })
-        // document.body.appendChild(renderer.domElement)
         handleResize()
-        
-        /**
-         * OrbitControls
-         */
+
+        /** OrbitControls */
         const controls = new OrbitControls(camera, renderer.domElement)
         controls.enableDamping = true
-        
-        /**
-         * Lights
-         */
+
+        /** Lights */
         const ambientLight = new AmbientLight(0xffffff, 1.5)
         const directionalLight = new DirectionalLight(0xffffff, 4.5)
         directionalLight.position.set(3, 10, 7)
         scene.add(ambientLight, directionalLight)
-        
-        /**
-         * Three js Clock
-         */
-        // const clock = new THREE.Clock()
-        
-        /**
-         * frame loop
-         */
+
+        const clock = new THREE.Clock()
         function tic() {
-            /**
-             * tempo trascorso dal frame precedente
-             */
-            // const deltaTime = clock.getDelta()
-            /**
-             * tempo totale trascorso dall'inizio
-             */
-            // const time = clock.getElapsedTime()
-        
+            const time = clock.getElapsedTime()
+            uniforms.uTime.value = time
             controls.update()
-        
             renderer.render(scene, camera)
-        
             requestAnimationFrame(tic)
         }
-        
+
         requestAnimationFrame(tic)
-        
+
         window.addEventListener('resize', handleResize)
-        
+
         function handleResize() {
             sizes.width = window.innerWidth
             sizes.height = window.innerHeight
-        
+
             camera.aspect = sizes.width / sizes.height
             camera.updateProjectionMatrix()
-        
+
             renderer.setSize(sizes.width, sizes.height)
-        
+
             const pixelRatio = Math.min(window.devicePixelRatio, 2)
             renderer.setPixelRatio(pixelRatio)
         }

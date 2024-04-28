@@ -1,0 +1,11 @@
+Model Information:
+* title:	Bear head
+* source:	https://sketchfab.com/3d-models/bear-head-96b3161ee04e4bb1854aece80aaf6598
+* author:	hymer (https://sketchfab.com/hymer)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Bear head" (https://sketchfab.com/3d-models/bear-head-96b3161ee04e4bb1854aece80aaf6598) by hymer (https://sketchfab.com/hymer) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
